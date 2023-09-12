@@ -44,7 +44,8 @@ def data_prep_openml(ds_id, seed, task, datasplit=[.65, .15, .2]):
     
     np.random.seed(seed) 
     dataset = openml.datasets.get_dataset(ds_id)
-    
+    print(dataset)
+    print('============================')
     X, y, categorical_indicator, attribute_names = dataset.get_data(dataset_format="dataframe", target=dataset.default_target_attribute)
     if ds_id == 42178:
         categorical_indicator = [True, False, True,True,False,True,True,True,True,True,True,True,True,True,True,True,True,False, False]

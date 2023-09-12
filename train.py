@@ -9,9 +9,11 @@ import torch.optim as optim
 from utils import count_parameters, classification_scores, mean_sq_error
 from augmentations import embed_data_mask
 from augmentations import add_noise
+from transformers import AutoTokenizer, AutoModelForMaskedLM
 
 import os
 import numpy as np
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--dset_id', required=True, type=int)
@@ -100,7 +102,7 @@ if opt.attentiontype != 'col':
     opt.embedding_size = min(32,opt.embedding_size)
     opt.ff_dropout = 0.8
 
-print(nfeat,opt.batchsize)
+print(f'Features: {nfeat}, Batch size: {opt.batchsize}')
 print(opt)
 
 if opt.active_log:
@@ -121,6 +123,8 @@ else:
 cat_dims = np.append(np.array([1]),np.array(cat_dims)).astype(int) #Appending 1 for CLS token, this is later used to generate embeddings.
 
 
+LM_tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+LM = AutoModelForMaskedLM.from_pretrained("bert-base-uncased", output_hidden_states=True)
 
 model = SAINT(
 categories = tuple(cat_dims), 
@@ -151,7 +155,15 @@ else:
     raise'case not written yet'
 
 model.to(device)
+LM.to(device)
 
+text = "This is an example sentence."
+inputs = LM_tokenizer(text, return_tensors="pt").to(device)
+
+with torch.no_grad():
+    outputs = LM(**inputs)
+    print(outputs.keys())      
+print(outputs.hidden_states[-1].shape)
 
 if opt.pretrain:
     from pretraining import SAINT_pretrain
