@@ -9,7 +9,7 @@ import torch.optim as optim
 from utils import count_parameters, classification_scores, mean_sq_error
 from augmentations import embed_data_mask
 from augmentations import add_noise
-from transformers import AutoTokenizer, AutoModelForMaskedLM
+from transformers import BertModel, BertTokenizer
 
 import os
 import numpy as np
@@ -87,7 +87,7 @@ if opt.active_log:
 
 
 print('Downloading and processing the dataset, it might take some time.')
-cat_dims, cat_idxs, con_idxs, X_train, y_train, X_valid, y_valid, X_test, y_test, train_mean, train_std = data_prep_openml(opt.dset_id, opt.dset_seed,opt.task, datasplit=[.65, .15, .2])
+cat_dims, cat_idxs, con_idxs, X_train, y_train, X_valid, y_valid, X_test, y_test, train_mean, train_std, categorical_columns, cont_columns = data_prep_openml(opt.dset_id, opt.dset_seed,opt.task, datasplit=[.65, .15, .2])
 continuous_mean_std = np.array([train_mean,train_std]).astype(np.float32) 
 
 ##### Setting some hyperparams based on inputs and dataset
@@ -123,8 +123,8 @@ else:
 cat_dims = np.append(np.array([1]),np.array(cat_dims)).astype(int) #Appending 1 for CLS token, this is later used to generate embeddings.
 
 
-LM_tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
-LM = AutoModelForMaskedLM.from_pretrained("bert-base-uncased", output_hidden_states=True)
+LM_tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+LM = BertModel.from_pretrained("bert-base-uncased", output_hidden_states=True)
 
 model = SAINT(
 categories = tuple(cat_dims), 
@@ -160,10 +160,10 @@ LM.to(device)
 text = "This is an example sentence."
 inputs = LM_tokenizer(text, return_tensors="pt").to(device)
 
-with torch.no_grad():
-    outputs = LM(**inputs)
-    print(outputs.keys())      
-print(outputs.hidden_states[-1].shape)
+# with torch.no_grad():
+#     outputs = LM(**inputs)
+#     print(outputs.keys())      
+# print(outputs.hidden_states[-1].shape)
 
 if opt.pretrain:
     from pretraining import SAINT_pretrain
@@ -194,9 +194,11 @@ for epoch in range(opt.epochs):
         # x_categ is the the categorical data, x_cont has continuous data, y_gts has ground truth ys. cat_mask is an array of ones same shape as x_categ and an additional column(corresponding to CLS token) set to 0s. con_mask is an array of ones same shape as x_cont. 
         x_categ, x_cont, y_gts, cat_mask, con_mask = data[0].to(device), data[1].to(device),data[2].to(device),data[3].to(device),data[4].to(device)
 
-        # We are converting the data to embeddings in the next step
-        _ , x_categ_enc, x_cont_enc = embed_data_mask(x_categ, x_cont, cat_mask, con_mask,model,vision_dset)           
+        ''' We are converting the data to embeddings in the next step '''
+        _ , x_categ_enc, x_cont_enc = embed_data_mask(x_categ, x_cont, cat_mask, con_mask,model,vision_dset)      
         reps = model.transformer(x_categ_enc, x_cont_enc)
+        print(reps[0])
+        exit()
         # select only the representations corresponding to CLS token and apply mlp on it in the next step to get the predictions.
         y_reps = reps[:,0,:]
         
