@@ -13,6 +13,7 @@ from transformers import BertModel, BertTokenizer
 
 import os
 import numpy as np
+import json
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 parser = argparse.ArgumentParser()
 
@@ -68,7 +69,7 @@ else:
     opt.dtask = 'clf'
 
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 print(f"Device is {device}.")
 
 torch.manual_seed(opt.set_seed)
@@ -99,7 +100,7 @@ if opt.attentiontype != 'col':
     opt.transformer_depth = 1
     opt.attention_heads = min(4,opt.attention_heads)
     opt.attention_dropout = 0.8
-    opt.embedding_size = min(32,opt.embedding_size)
+    # opt.embedding_size = min(32,opt.embedding_size)
     opt.ff_dropout = 0.8
 
 print(f'Features: {nfeat}, Batch size: {opt.batchsize}')
@@ -157,13 +158,6 @@ else:
 model.to(device)
 LM.to(device)
 
-text = "This is an example sentence."
-inputs = LM_tokenizer(text, return_tensors="pt").to(device)
-
-# with torch.no_grad():
-#     outputs = LM(**inputs)
-#     print(outputs.keys())      
-# print(outputs.hidden_states[-1].shape)
 
 if opt.pretrain:
     from pretraining import SAINT_pretrain
@@ -186,6 +180,30 @@ best_test_auroc = 0
 best_test_accuracy = 0
 best_valid_rmse = 100000
 print('Training begins now.')
+
+''' Transfrom column name to embedding '''
+categ_embed = torch.empty(1, 768).to(device)
+cont_embed = torch.empty(1, 768).to(device)
+
+''' Take [CLS] '''
+with open(f'table_info/{opt.dset_id}.json', 'r') as file:
+    col_info = json.load(file)
+categorical_col_info, cont_columns_info = col_info["categorical_columns"], col_info["cont_columns"]
+input_ids = [LM_tokenizer(col, return_tensors="pt").to(device) for col in categorical_col_info]
+for input_id in input_ids:
+    with torch.no_grad():   
+        outputs = LM(**input_id)  
+        CLS = torch.unsqueeze(outputs.hidden_states[-1].squeeze()[0], dim=0)
+        categ_embed = torch.cat((categ_embed, CLS), dim=0)
+input_ids = [LM_tokenizer(col, return_tensors="pt").to(device) for col in cont_columns_info]
+for input_id in input_ids:
+    with torch.no_grad():   
+        outputs = LM(**input_id)  
+        CLS = torch.unsqueeze(outputs.hidden_states[-1].squeeze()[0], dim=0)
+        cont_embed = torch.cat((cont_embed, CLS), dim=0)
+categ_embed = categ_embed[1:, :].unsqueeze(0)
+cont_embed = cont_embed[1:, :].unsqueeze(0)
+
 for epoch in range(opt.epochs):
     model.train()
     running_loss = 0.0
@@ -195,10 +213,13 @@ for epoch in range(opt.epochs):
         x_categ, x_cont, y_gts, cat_mask, con_mask = data[0].to(device), data[1].to(device),data[2].to(device),data[3].to(device),data[4].to(device)
 
         ''' We are converting the data to embeddings in the next step '''
-        _ , x_categ_enc, x_cont_enc = embed_data_mask(x_categ, x_cont, cat_mask, con_mask,model,vision_dset)      
+        _ , x_categ_enc, x_cont_enc = embed_data_mask(x_categ, x_cont, cat_mask, con_mask,model,vision_dset)  
+
+        ''' Add LM embedding into x_categ_enc, x_cont_enc (Mean)'''  
+        x_categ_enc[:, 1:, :] = (x_categ_enc[:, 1:, :] + categ_embed.expand(x_categ_enc.shape[0], -1, -1)) / 2
+        x_cont_enc = (x_cont_enc + cont_embed.expand(x_cont_enc.shape[0], -1, -1)) / 2
         reps = model.transformer(x_categ_enc, x_cont_enc)
-        print(reps[0])
-        exit()
+
         # select only the representations corresponding to CLS token and apply mlp on it in the next step to get the predictions.
         y_reps = reps[:,0,:]
         

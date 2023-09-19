@@ -99,6 +99,8 @@ def data_prep_openml(ds_id, seed, task, datasplit=[.65, .15, .2]):
     train_mean, train_std = np.array(X_train['data'][:,con_idxs],dtype=np.float32).mean(0), np.array(X_train['data'][:,con_idxs],dtype=np.float32).std(0)
     train_std = np.where(train_std < 1e-6, 1e-6, train_std)
     # import ipdb; ipdb.set_trace()
+    categorical_columns = X.columns[cat_idxs].tolist()
+    cont_columns = X.columns[con_idxs].tolist()
     return cat_dims, cat_idxs, con_idxs, X_train, y_train, X_valid, y_valid, X_test, y_test, train_mean, train_std, categorical_columns, cont_columns
 
 

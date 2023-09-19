@@ -1,0 +1,1 @@
+python train.py --dset_id 1590 --task binary --attentiontype col --embedding_size 768

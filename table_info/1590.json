@@ -1,0 +1,20 @@
+{
+  "categorical_columns" : [
+    " 'Workclass' refers to the category or type of employment status that describes an individual's work situation, and it contains 8 distinct values.",
+    " 'Education' refers to an individual's highest level of formal learning or academic achievement, and it contains 16 distinct values.",
+    " 'Marital-status' is a term that describes an individual's current legal or social relationship status in relation to marriage, and it contains 7 distinct values.",
+    " 'Occupation' refers to the specific job or type of work that an individual is engaged in to earn a living or pursue a career,  and it contains 14 distinct values.",
+    " 'Relationship' refers to the role of family, like 'husband', 'wife' or 'own-child', and it contains 6 distinct values.",
+    " 'Race' is a concept used to categorize and classify groups of people based on shared physical, genetic, or social characteristics, and it contains 5 distinct values.",
+    " 'Sex' refers to the biological and physiological characteristics that categorize individuals as male or female, and it contains 2 distinct values.",
+    " 'Native-country' refers to the nation or place where an individual was born or where they originally come from, and it contains 41 distinct values."
+  ],
+  "cont_columns" : [
+    " 'Age' is a numerical representation of the number of years a person has lived since their birth.",
+    " 'Fnlwgt' is a proxy for the demographic background of the people: 'People with similar demographic characteristics should have similar weights'.",
+    " 'Education-num' represents the number of years of formal education an individual has received.",
+    " 'Capital-gain' refers to the profit obtained through buying and selling assets, such as stocks or real estate.",
+    " 'Capital loss' refers to the financial loss incurred when the sale of an asset results in a lower selling price compared to its original purchase price.",
+    " 'Hours-per-week' represents the number of hours worked per week by an individual."
+  ]
+}
